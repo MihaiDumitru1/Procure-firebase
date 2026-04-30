@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: get caller's role from /users/{uid}
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return userRole() == 'app-admin';
+    }
+
+    function isInternal() {
+      return userRole() in ['app-admin', 'tender-organizer', 'procurement-officer'];
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Users collection — read own, admin manages all
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Properties (SPVs) — internal users can read, admin can write
+    match /properties/{propId} {
+      allow read: if isAuthenticated() && isInternal();
+      allow create, update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // Tenders — internal can read all, organizer+ can write
+    match /tenders/{tenderId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && userRole() in ['app-admin', 'tender-organizer'];
+      allow update: if isAuthenticated() && userRole() in ['app-admin', 'tender-organizer'];
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // Suppliers — internal can read, admin can write
+    match /suppliers/{supplierId} {
+      allow read: if isAuthenticated() && isInternal();
+      allow create, update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // Tender invitations
+    match /tender_invitations/{invId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && userRole() in ['app-admin', 'tender-organizer'];
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+  }
+}
