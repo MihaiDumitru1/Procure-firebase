@@ -1,7 +1,7 @@
 import { useState } from 'react';
 // SPV state managed via SPVContext
 import { Link } from 'react-router-dom';
-import { Building2, MapPin, AreaChart, Layers, Plus, Loader2 } from 'lucide-react';
+import { Building2, MapPin, AreaChart, Layers, Plus, Loader2, Pencil } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Header } from '@/components/layout/Header';
 import { useTenders } from '@/hooks/useTenders';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { dataProvider } from '@/data-access';
 import { PropertyType } from '@/types/tender';
 import {
   Dialog,
@@ -67,10 +68,13 @@ export default function Properties() {
   const { toast } = useToast();
   const isAdmin = role === 'app-admin';
 
-  const { spvList, addSPV, loading } = useSPVs();
+  const { spvList, addSPV, loading, refreshSPVs } = useSPVs();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
 
   const totalArea = spvList.reduce((sum, s) => sum + s.totalArea, 0);
   const { tenders: allDbTenders } = useTenders();
@@ -125,6 +129,54 @@ export default function Properties() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const openEditProperty = (spv: any, e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent Link navigation
+    e.stopPropagation();
+    setEditId(spv.id);
+    setEditForm({
+      name: spv.name,
+      code: spv.code,
+      address: spv.address,
+      city: spv.city,
+      country: spv.country,
+      propertyType: spv.propertyType,
+      totalArea: String(spv.totalArea),
+      yearBuilt: spv.yearBuilt ? String(spv.yearBuilt) : '',
+      manager: spv.manager ?? '',
+      description: spv.description ?? '',
+    });
+    setEditOpen(true);
+  };
+
+  const handleEditChange = (field: keyof typeof EMPTY_FORM, value: string) => {
+    setEditForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editId) return;
+    setSaving(true);
+    try {
+      await dataProvider.properties.update(editId, {
+        name: editForm.name.trim(),
+        code: editForm.code.trim().toUpperCase(),
+        address: editForm.address.trim(),
+        city: editForm.city.trim(),
+        country: editForm.country.trim(),
+        property_type: editForm.propertyType,
+        total_area: Number(editForm.totalArea),
+        year_built: editForm.yearBuilt ? Number(editForm.yearBuilt) : null,
+        manager: editForm.manager.trim() || null,
+        description: editForm.description.trim() || null,
+      });
+      toast({ title: 'Proprietate actualizată' });
+      setEditOpen(false);
+      await refreshSPVs();
+    } catch (err: any) {
+      toast({ title: 'Eroare', description: err.message, variant: 'destructive' });
+    }
+    setSaving(false);
   };
 
   if (loading) {
@@ -206,6 +258,11 @@ export default function Properties() {
                   <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                     <Building2 className="h-5 w-5 text-primary" />
                   </div>
+                  {isAdmin && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary" onClick={(e) => openEditProperty(spv, e)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
                   <span className={cn(
                     "text-xs font-medium px-2 py-1 rounded-full",
                     propertyTypeColors[spv.propertyType]
@@ -387,6 +444,76 @@ export default function Properties() {
             </Button>
             <Button onClick={handleSave} disabled={!isValid || saving}>
               {saving ? 'Se salvează...' : 'Adaugă proprietate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Property Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editează proprietatea</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Nume proprietate *</Label>
+                <Input value={editForm.name} onChange={e => handleEditChange('name', e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cod *</Label>
+                <Input value={editForm.code} onChange={e => handleEditChange('code', e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Adresă *</Label>
+              <Input value={editForm.address} onChange={e => handleEditChange('address', e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Oraș *</Label>
+                <Input value={editForm.city} onChange={e => handleEditChange('city', e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Țară *</Label>
+                <Input value={editForm.country} onChange={e => handleEditChange('country', e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tip proprietate *</Label>
+              <Select value={editForm.propertyType} onValueChange={v => handleEditChange('propertyType', v)}>
+                <SelectTrigger><SelectValue placeholder="Selectează..." /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(propertyTypeLabels).map(([val, lab]) => (
+                    <SelectItem key={val} value={val}>{lab}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Suprafață totală (m²) *</Label>
+                <Input type="number" value={editForm.totalArea} onChange={e => handleEditChange('totalArea', e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Anul construirii</Label>
+                <Input type="number" value={editForm.yearBuilt} onChange={e => handleEditChange('yearBuilt', e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Manager proprietate</Label>
+              <Input value={editForm.manager} onChange={e => handleEditChange('manager', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Descriere</Label>
+              <Textarea value={editForm.description} onChange={e => handleEditChange('description', e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Anulează</Button>
+            <Button onClick={handleSaveEdit} disabled={saving}>
+              {saving ? 'Se salvează...' : 'Salvează'}
             </Button>
           </DialogFooter>
         </DialogContent>

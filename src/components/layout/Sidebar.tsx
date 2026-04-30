@@ -37,7 +37,6 @@ export function Sidebar() {
   const navigation = isSupplier
     ? [
         { name: 'Portal Furnizor', href: '/supplier-portal', icon: Package },
-        { name: t.nav.tenders, href: '/tenders', icon: FileText },
         { name: t.nav.settings, href: '/settings', icon: Settings },
       ]
     : [
