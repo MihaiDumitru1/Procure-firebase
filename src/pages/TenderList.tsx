@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Grid, List, Building2, FlaskConical, ArrowRight } from 'lucide-react';
+import { Plus, Grid, List, Building2 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Header } from '@/components/layout/Header';
 import { TenderCard } from '@/components/dashboard/TenderCard';
-
 import { useSPVs } from '@/context/SPVContext';
 import { useTenders } from '@/hooks/useTenders';
 import { Button } from '@/components/ui/button';
@@ -18,8 +17,6 @@ import {
 } from '@/components/ui/select';
 import { TenderStatus } from '@/types/tender';
 import { cn } from '@/lib/utils';
-
-
 
 type StatusFilter = 'all' | TenderStatus;
 
@@ -54,25 +51,6 @@ export default function TenderList() {
       />
       
       <div className="p-6 space-y-6">
-        {/* Demo Banner */}
-        <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-primary/30 bg-primary/5">
-          <div className="p-2.5 rounded-full bg-primary/15 shrink-0">
-            <FlaskConical className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground">Demo interactiv disponibil</p>
-            <p className="text-xs text-muted-foreground">
-              Licitația <span className="font-medium text-foreground">Integrated Facility Services – Westend Tower</span> conține date complete: 2 furnizori, oferte BOQ cu prețuri, 2 runde și este gata pentru desemnarea câștigătorului.
-            </p>
-          </div>
-          <Button asChild size="sm" className="shrink-0 gap-1.5">
-            <Link to="/tenders/tender-demo">
-              Deschide Demo
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        </div>
-
         {/* Filters */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
@@ -119,7 +97,7 @@ export default function TenderList() {
                 <List className="h-4 w-4" />
               </Button>
             </div>
-
+            
             <Button asChild>
               <Link to="/tenders/new">
                 <Plus className="h-4 w-4 mr-2" />
