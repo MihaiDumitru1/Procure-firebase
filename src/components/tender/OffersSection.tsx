@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Euro, FileText, CheckCircle2, XCircle, Clock, Star, Trophy, AlertTriangle } from 'lucide-react';
+import { Euro, FileText, CheckCircle2, XCircle, Clock, Star, Trophy, AlertTriangle, User, Calendar, Package } from 'lucide-react';
 import { TenderRound, Offer } from '@/types/tender';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -14,6 +14,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,6 +43,7 @@ const statusIcons: Record<Offer['status'], React.ReactNode> = {
 export function OffersSection({ rounds, currentRound, tenderId, onWinnerSelected, readOnly = false }: OffersSectionProps) {
   const { toast } = useToast();
   const activeRoundId = rounds.find(r => r.roundNumber === currentRound)?.id || rounds[0]?.id;
+  const [viewOffer, setViewOffer] = useState<Offer | null>(null);
 
   // Local state to track winner selection (in a real app this would persist to DB)
   const [localRounds, setLocalRounds] = useState<TenderRound[]>(rounds);
@@ -99,7 +106,7 @@ export function OffersSection({ rounds, currentRound, tenderId, onWinnerSelected
           </StatusBadge>
         </div>
         <p className="text-sm text-muted-foreground">
-          Submitted {new Date(offer.submittedAt).toLocaleDateString()}
+          Submitted {new Date(offer.submittedAt || Date.now()).toLocaleDateString()}
         </p>
       </div>
 
@@ -109,12 +116,12 @@ export function OffersSection({ rounds, currentRound, tenderId, onWinnerSelected
         </p>
         <div className="flex items-center gap-1 text-xs text-muted-foreground justify-end">
           <FileText className="h-3 w-3" />
-          <span>{offer.documents.length} documents</span>
+          <span>{(offer.documents ?? []).length} documents</span>
         </div>
       </div>
 
       <div className="flex gap-2">
-        <Button variant="outline" size="sm">View</Button>
+        <Button variant="outline" size="sm" onClick={() => setViewOffer(offer)}>View</Button>
         {!readOnly && offer.status !== 'winner' && offer.status !== 'rejected' && (
           <Button
             variant="outline"
@@ -152,7 +159,7 @@ export function OffersSection({ rounds, currentRound, tenderId, onWinnerSelected
             <p className="text-xs font-semibold uppercase tracking-wide text-status-awarded mb-0.5">Tender Awarded</p>
             <p className="text-lg font-bold text-foreground">{winnerOffer.supplierName}</p>
             <p className="text-sm text-muted-foreground">
-              Winning offer submitted {new Date(winnerOffer.submittedAt).toLocaleDateString()}
+              Winning offer submitted {new Date(winnerOffer.submittedAt || Date.now()).toLocaleDateString()}
             </p>
           </div>
           <div className="text-right">
@@ -256,6 +263,85 @@ export function OffersSection({ rounds, currentRound, tenderId, onWinnerSelected
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Offer Dialog */}
+      <Dialog open={!!viewOffer} onOpenChange={() => setViewOffer(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Detalii ofertă</DialogTitle>
+          </DialogHeader>
+          {viewOffer && (
+            <div className="space-y-4 py-2">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-semibold">
+                  {viewOffer.supplierName.substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-semibold">{viewOffer.supplierName}</p>
+                  <StatusBadge status={viewOffer.status} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Sumă ofertă</p>
+                  <p className="text-lg font-semibold text-primary">€{viewOffer.amount.toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Runda</p>
+                  <p className="text-lg font-semibold">{viewOffer.round}</p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">Trimisă la</p>
+                </div>
+                <p className="text-sm">{new Date(viewOffer.submittedAt || Date.now()).toLocaleString('ro-RO')}</p>
+              </div>
+
+              {(viewOffer as any).notes && (
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Note</p>
+                  <p className="text-sm">{(viewOffer as any).notes}</p>
+                </div>
+              )}
+
+              {(viewOffer as any).articlePrices && Object.keys((viewOffer as any).articlePrices).length > 0 && (
+                <div className="rounded-lg border border-border p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Prețuri pe articole</p>
+                  </div>
+                  <div className="space-y-1">
+                    {Object.entries((viewOffer as any).articlePrices).map(([artId, price]) => (
+                      <div key={artId} className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{artId}</span>
+                        <span className="font-medium">€{Number(price).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(viewOffer.documents ?? []).length > 0 && (
+                <div className="rounded-lg border border-border p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Documente ({(viewOffer.documents ?? []).length})</p>
+                  </div>
+                  <div className="space-y-1">
+                    {(viewOffer.documents ?? []).map((doc, i) => (
+                      <p key={i} className="text-sm">{doc.name}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
