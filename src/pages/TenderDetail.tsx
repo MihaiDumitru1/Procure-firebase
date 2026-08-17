@@ -146,8 +146,8 @@ export default function TenderDetail() {
   }, [tender?.rounds?.length]);
 
   const handleOfferSubmitted = async (offer: any) => {
-    // Add offer to the current round
-    const updatedRounds = localRounds.map(r => {
+    // Add new offer to the current round (keeps history)
+    let updatedRounds = localRounds.map(r => {
       if (r.roundNumber === tender?.currentRound) {
         return { ...r, offers: [...(r.offers ?? []), offer] };
       }
@@ -155,14 +155,14 @@ export default function TenderDetail() {
     });
     // If no rounds exist, create one
     if (updatedRounds.length === 0) {
-      updatedRounds.push({
+      updatedRounds = [{
         id: `round-1`,
         roundNumber: 1,
         startDate: new Date().toISOString(),
         endDate: tender?.submissionEndDate ?? new Date().toISOString(),
         status: 'active',
         offers: [offer],
-      });
+      }];
     }
     setLocalRounds(updatedRounds);
     await updateTenderField({ rounds: updatedRounds });
@@ -671,7 +671,7 @@ export default function TenderDetail() {
                       localRounds
                         .flatMap(r => r.offers ?? [])
                         .filter(o => o.supplierId === user?.uid || o.supplierName === (fullName || user?.email))
-                        .sort((a, b) => (b.round ?? 0) - (a.round ?? 0))[0] ?? undefined
+                        .sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime())[0] ?? undefined
                     }
                     onSubmitted={handleOfferSubmitted}
                   />
