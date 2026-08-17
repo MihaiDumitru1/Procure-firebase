@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Upload, Euro, FileText, Send, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,16 @@ export function SupplierOfferForm({
   );
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(!!existingOffer);
+
+  // Sync when existingOffer loads after initial render
+  useEffect(() => {
+    if (existingOffer) {
+      setAmount(existingOffer.amount?.toString() ?? '');
+      setNotes(existingOffer.notes ?? '');
+      setArticlePrices(existingOffer.articlePrices ?? {});
+      setSubmitted(true);
+    }
+  }, [existingOffer?.id]);
 
   const totalFromArticles = articles.length > 0
     ? articles.reduce((sum, a) => sum + (articlePrices[a.id] ?? 0) * (a.quantity ?? 1), 0)

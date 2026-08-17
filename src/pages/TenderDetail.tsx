@@ -667,6 +667,12 @@ export default function TenderDetail() {
                     supplierName={fullName || user?.email || 'Furnizor'}
                     supplierId={user?.uid ?? ''}
                     currentRound={tender.currentRound}
+                    existingOffer={
+                      localRounds
+                        .flatMap(r => r.offers ?? [])
+                        .filter(o => o.supplierId === user?.uid || o.supplierName === (fullName || user?.email))
+                        .sort((a, b) => (b.round ?? 0) - (a.round ?? 0))[0] ?? undefined
+                    }
                     onSubmitted={handleOfferSubmitted}
                   />
                 </div>
