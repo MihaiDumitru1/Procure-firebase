@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, GripVertical, Package } from 'lucide-react';
 import { TenderArticle } from '@/types/tender';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,12 @@ interface ArticlesSectionProps {
 
 export function ArticlesSection({ articles: initialArticles, readOnly = false, supplierMode = false, onChange }: ArticlesSectionProps) {
   const [articles, setArticlesRaw] = useState<TenderArticle[]>(initialArticles);
+
+  // Re-sync when parent's articles change (e.g. tender loaded async from Firestore)
+  useEffect(() => {
+    setArticlesRaw(initialArticles);
+  }, [initialArticles]);
+
   const setArticles: typeof setArticlesRaw = (updater) => {
     setArticlesRaw(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;

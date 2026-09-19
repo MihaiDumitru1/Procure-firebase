@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, Target, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { SelectionCriterion } from '@/types/tender';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,10 @@ export function SelectionCriteriaSection({
   onChange,
 }: SelectionCriteriaSectionProps) {
   const [criteria, setCriteria] = useState<SelectionCriterion[]>(initialCriteria);
+
+  useEffect(() => {
+    setCriteria(initialCriteria);
+  }, [initialCriteria]);
 
   const update = (updated: SelectionCriterion[]) => {
     setCriteria(updated);

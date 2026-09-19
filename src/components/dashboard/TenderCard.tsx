@@ -89,10 +89,15 @@ export function TenderCard({ tender, className, showSpv = true }: TenderCardProp
               <span className="text-xs">{publicDocs}</span>
             </div>
             {unansweredQuestions > 0 && (
-              <div className="flex items-center gap-1 text-status-active-foreground" title="Pending questions">
+              <Link
+                to={`/tenders/${tender.id}?tab=questions`}
+                className="flex items-center gap-1 text-status-active-foreground hover:underline"
+                title="Pending questions"
+                onClick={e => e.stopPropagation()}
+              >
                 <MessageCircle className="h-4 w-4" />
                 <span className="text-xs">{unansweredQuestions}</span>
-              </div>
+              </Link>
             )}
           </div>
         </div>

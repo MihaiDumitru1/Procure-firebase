@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, Upload, FileText, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { CompulsoryOfferItem } from '@/types/tender';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,10 @@ export function CompulsoryOfferSection({
 }: CompulsoryOfferSectionProps) {
   const [items, setItems] = useState<CompulsoryOfferItem[]>(initialItems);
   const [uploads, setUploads] = useState<UploadedFile[]>([]);
+
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
 
   const update = (updated: CompulsoryOfferItem[]) => {
     setItems(updated);

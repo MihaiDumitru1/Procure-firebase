@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, MapPin, Euro, Edit, Trash2, Play, Pause, Building2, Lock, Trophy, Eye, ListChecks, Target, Sparkles, ClipboardList, Hash, Bell, Send, UserPlus } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Header } from '@/components/layout/Header';
@@ -31,9 +31,12 @@ import { dataProvider } from '@/data-access';
 import { useToast } from '@/hooks/use-toast';
 import { TenderArticle, CompulsoryOfferItem, SelectionCriterion } from '@/types/tender';
 import { serviceCategories } from '@/data/categories';
+import { toLocalNoonIso, isoToDateInputValue, todayAtMidnight } from '@/lib/dateUtils';
 
 export default function TenderDetail() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'articles';
   const { t } = useLanguage();
   const { role, fullName, user } = useAuth();
   const { spvList } = useSPVs();
@@ -52,6 +55,7 @@ export default function TenderDetail() {
   const isAdminOrOrganizer =
     role === 'app-admin' || role === 'tender-organizer' || role === 'procurement-officer';
   const canEdit = role === 'app-admin' || role === 'tender-organizer' || role === 'procurement-officer';
+  const canEditContent = canEdit && tenderStatus === 'draft'; // Lock articles/criteria after publish
 
   const [tenderStatus, setTenderStatus] = useState(tender?.status ?? 'draft');
   const [localArticles, setLocalArticles] = useState<TenderArticle[]>(tender?.articles ?? []);
@@ -59,6 +63,8 @@ export default function TenderDetail() {
   const [localCriteria, setLocalCriteria] = useState<SelectionCriterion[]>(tender?.selectionCriteria ?? []);
   const [localQuestions, setLocalQuestions] = useState<any[]>(tender?.questions ?? []);
   const [localDocuments, setLocalDocuments] = useState<any[]>(tender?.documents ?? []);
+  const [localCurrentRound, setLocalCurrentRound] = useState<number>(tender?.currentRound ?? 1);
+  const [localTotalRounds, setLocalTotalRounds] = useState<number>(tender?.totalRounds ?? 1);
   const [winnerInfo, setWinnerInfo] = useState<{ name: string; amount: number } | null>(null);
 
   // Sync local state when tender loads/changes from Firestore
@@ -70,6 +76,8 @@ export default function TenderDetail() {
     setLocalCriteria(tender.selectionCriteria ?? []);
     setLocalQuestions(tender.questions ?? []);
     setLocalDocuments(tender.documents ?? []);
+    setLocalCurrentRound(tender.currentRound ?? 1);
+    setLocalTotalRounds(tender.totalRounds ?? 1);
     const w = tender.rounds.flatMap(r => r.offers).find(o => o.status === 'winner');
     setWinnerInfo(w ? { name: w.supplierName, amount: w.amount } : null);
   }, [tender?.id, tender?.status, tender?.articles?.length]);
@@ -166,6 +174,19 @@ export default function TenderDetail() {
     }
     setLocalRounds(updatedRounds);
     await updateTenderField({ rounds: updatedRounds });
+  };
+
+  const handleRoundsChange = async (updatedRounds: any[]) => {
+    setLocalRounds(updatedRounds);
+    const newTotalRounds = Math.max(...updatedRounds.map((r: any) => r.roundNumber));
+    const newCurrentRound = newTotalRounds; // Move to the newest round
+    setLocalCurrentRound(newCurrentRound);
+    setLocalTotalRounds(newTotalRounds);
+    await updateTenderField({
+      rounds: updatedRounds,
+      current_round: newCurrentRound,
+      total_rounds: newTotalRounds,
+    });
   };
 
   // ─── Invite Suppliers Dialog ──────────────────────────────────────────────
@@ -265,9 +286,9 @@ export default function TenderDetail() {
       spv_id: tender.spvId,
       location: tender.location,
       budget: tender.budget ?? '',
-      participation_deadline: tender.participationDeadline?.split('T')[0] ?? '',
+      participation_deadline: isoToDateInputValue(tender.participationDeadline),
       participation_deadline_time: tender.participationDeadlineTime ?? '17:00',
-      submission_end_date: tender.submissionEndDate?.split('T')[0] ?? '',
+      submission_end_date: isoToDateInputValue(tender.submissionEndDate),
       submission_end_time: tender.submissionEndTime ?? '17:00',
       min_participants: tender.minParticipants,
     });
@@ -285,9 +306,9 @@ export default function TenderDetail() {
         spv_id: editForm.spv_id,
         location: selectedSpv ? `${selectedSpv.address}, ${selectedSpv.city}` : editForm.location,
         budget: editForm.budget,
-        participation_deadline: editForm.participation_deadline ? new Date(editForm.participation_deadline).toISOString() : null,
+        participation_deadline: editForm.participation_deadline ? toLocalNoonIso(editForm.participation_deadline) : null,
         participation_deadline_time: editForm.participation_deadline_time,
-        submission_end_date: editForm.submission_end_date ? new Date(editForm.submission_end_date).toISOString() : null,
+        submission_end_date: editForm.submission_end_date ? toLocalNoonIso(editForm.submission_end_date) : null,
         submission_end_time: editForm.submission_end_time,
         min_participants: editForm.min_participants,
       });
@@ -464,7 +485,7 @@ export default function TenderDetail() {
                   {tenderStatus.charAt(0).toUpperCase() + tenderStatus.slice(1)}
                 </StatusBadge>
                 <span className="text-sm text-muted-foreground">
-                  {t.common.round} {tender.currentRound} {t.common.of} {tender.totalRounds}
+                  {t.common.round} {localCurrentRound} {t.common.of} {localTotalRounds}
                 </span>
                 {/* Reference code badge */}
                 {tender.referenceCode && (
@@ -552,7 +573,7 @@ export default function TenderDetail() {
         )}
 
         {/* Tabs */}
-        <Tabs defaultValue="articles">
+        <Tabs defaultValue={defaultTab}>
           <TabsList className="bg-muted/50 flex-wrap h-auto gap-1">
             <TabsTrigger value="articles">
               {t.tender.tabs.articles}
@@ -609,7 +630,7 @@ export default function TenderDetail() {
           </TabsList>
 
           <TabsContent value="articles" className="mt-4">
-            <ArticlesSection articles={localArticles} readOnly={!canEdit} onChange={handleArticlesChange} />
+            <ArticlesSection articles={localArticles} readOnly={!canEditContent} onChange={canEditContent ? handleArticlesChange : undefined} />
           </TabsContent>
 
           <TabsContent value="compulsory" className="mt-4">
@@ -623,7 +644,7 @@ export default function TenderDetail() {
               </div>
               <CompulsoryOfferSection
                 items={localCompulsory}
-                canEdit={canEdit}
+                canEdit={canEditContent}
                 supplierMode={isSupplier}
                 onChange={handleCompulsoryChange}
               />
@@ -639,7 +660,7 @@ export default function TenderDetail() {
                   {localCriteria.length} criteria
                 </span>
               </div>
-              <SelectionCriteriaSection criteria={localCriteria} canEdit={canEdit} onChange={handleCriteriaChange} />
+              <SelectionCriteriaSection criteria={localCriteria} canEdit={canEditContent} onChange={canEditContent ? handleCriteriaChange : undefined} />
             </div>
           </TabsContent>
 
@@ -664,9 +685,13 @@ export default function TenderDetail() {
                   <SupplierOfferForm
                     tenderId={tender.id}
                     articles={localArticles}
+                    compulsoryItems={localCompulsory}
                     supplierName={fullName || user?.email || 'Furnizor'}
                     supplierId={user?.uid ?? ''}
-                    currentRound={tender.currentRound}
+                    currentRound={localCurrentRound}
+                    submissionEndDate={tender.submissionEndDate}
+                    submissionEndTime={tender.submissionEndTime}
+                    participationDeadline={tender.participationDeadline}
                     existingOffer={
                       localRounds
                         .flatMap(r => r.offers ?? [])
@@ -679,10 +704,14 @@ export default function TenderDetail() {
               )}
               <OffersSection
                 rounds={localRounds}
-                currentRound={tender.currentRound}
+                currentRound={localCurrentRound}
                 tenderId={tender.id}
                 onWinnerSelected={handleWinnerSelected}
+                onRoundsChange={handleRoundsChange}
                 readOnly={isSupplier || !canEdit}
+                articles={localArticles}
+                submissionEndDate={tender.submissionEndDate}
+                submissionEndTime={tender.submissionEndTime}
               />
           </TabsContent>
 
@@ -746,7 +775,7 @@ export default function TenderDetail() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Deadline participare</Label>
-                <Input type="date" value={editForm.participation_deadline} onChange={e => setEditForm(f => ({ ...f, participation_deadline: e.target.value }))} />
+                <Input type="date" value={editForm.participation_deadline} min={new Date().toISOString().split("T")[0]} onChange={e => setEditForm(f => ({ ...f, participation_deadline: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Ora</Label>
@@ -756,7 +785,7 @@ export default function TenderDetail() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Deadline oferte</Label>
-                <Input type="date" value={editForm.submission_end_date} onChange={e => setEditForm(f => ({ ...f, submission_end_date: e.target.value }))} />
+                <Input type="date" value={editForm.submission_end_date} min={new Date().toISOString().split("T")[0]} onChange={e => setEditForm(f => ({ ...f, submission_end_date: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Ora</Label>

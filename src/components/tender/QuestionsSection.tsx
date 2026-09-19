@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MessageCircle, Send, CheckCircle2, Paperclip, Globe, X, Users, Plus, Bell, BellOff, Trophy, Lock } from 'lucide-react';
 import { Question } from '@/types/tender';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,11 @@ export function QuestionsSection({
   onChange,
 }: QuestionsSectionProps) {
   const [questions, setQuestionsRaw] = useState<Question[]>(initialQuestions);
+
+  useEffect(() => {
+    setQuestionsRaw(initialQuestions);
+  }, [initialQuestions]);
+
   const setQuestions: typeof setQuestionsRaw = (updater) => {
     setQuestionsRaw(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;

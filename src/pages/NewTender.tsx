@@ -35,6 +35,7 @@ import { useSPVs } from '@/context/SPVContext';
 import { useAuth } from '@/hooks/useAuth';
 import { dataProvider } from '@/data-access';
 import { serviceCategories } from '@/data/categories';
+import { toLocalNoonIso, todayAtMidnight } from '@/lib/dateUtils';
 import { Switch } from '@/components/ui/switch';
 
 // ─── Schema ────────────────────────────────────────────────────────────────────
@@ -154,6 +155,7 @@ function DateTimeField({
               mode="single"
               selected={dateValue}
               onSelect={onDateChange}
+              disabled={(date) => date < todayAtMidnight()}
               initialFocus
               className="p-3 pointer-events-auto"
             />
@@ -231,7 +233,7 @@ function RoundCard({
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
+                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < todayAtMidnight()} initialFocus className="p-3 pointer-events-auto" />
                   </PopoverContent>
                 </Popover>
                 <FormField
@@ -274,7 +276,7 @@ function RoundCard({
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
+                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < todayAtMidnight()} initialFocus className="p-3 pointer-events-auto" />
                   </PopoverContent>
                 </Popover>
                 <FormField
@@ -545,7 +547,7 @@ export default function NewTender() {
     const spv = spvList.find(s => s.id === data.spvId);
     const now = new Date().toISOString();
     const toIso = (d: Date | undefined | null) =>
-      d instanceof Date && !isNaN(d.getTime()) ? d.toISOString() : now;
+      d instanceof Date && !isNaN(d.getTime()) ? toLocalNoonIso(d) : now;
 
     const tenderRow = {
       title: data.title,
