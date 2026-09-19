@@ -55,9 +55,9 @@ export default function TenderDetail() {
   const isAdminOrOrganizer =
     role === 'app-admin' || role === 'tender-organizer' || role === 'procurement-officer';
   const canEdit = role === 'app-admin' || role === 'tender-organizer' || role === 'procurement-officer';
-  const canEditContent = canEdit && tenderStatus === 'draft'; // Lock articles/criteria after publish
 
   const [tenderStatus, setTenderStatus] = useState(tender?.status ?? 'draft');
+  const canEditContent = canEdit && tenderStatus === 'draft'; // Lock articles/criteria after publish
   const [localArticles, setLocalArticles] = useState<TenderArticle[]>(tender?.articles ?? []);
   const [localCompulsory, setLocalCompulsory] = useState<CompulsoryOfferItem[]>(tender?.compulsoryOfferItems ?? []);
   const [localCriteria, setLocalCriteria] = useState<SelectionCriterion[]>(tender?.selectionCriteria ?? []);
